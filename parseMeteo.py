@@ -9,7 +9,9 @@ import time
 citeName = "https://www.gismeteo.ru/diary/"
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' }
 
-
+def parseData(lineData):
+    return int(lineData[0].getText())
+    
 def parseTemp(lineData, shift):
     return int(lineData[1+shift].getText())
     
@@ -67,14 +69,14 @@ def parseWindData(lineData, shift):
     return windSpeed, windDir
     
 def parseLine(lineData, shift):
-
+    data = parseData(lineData)
     temp = parseTemp(lineData, shift)
     pr = parsePressure(lineData, shift)
     cloud = parseCloud(lineData, shift)
     weather = parseWeather(lineData, shift)
     windSpeed, windDir = parseWindData(lineData, shift)
     
-    return {"temp": temp, "pressure": pr, "cloud": cloud, "weather": weather, "windSpeed": windSpeed, "windDir": windDir}
+    return {"data": data, "temp": temp, "pressure": pr, "cloud": cloud, "weather": weather, "windSpeed": windSpeed, "windDir": windDir}
 
 def parseTable(pageData):
     allData_tmp = []
@@ -84,9 +86,7 @@ def parseTable(pageData):
     for fullLineId, fullLine in enumerate(linesInTable):
         try:
             day = parseLine(fullLine.find_all('td'), 0)
-	    day["data"] = fullLineId
             night = parseLine(fullLine.find_all('td'), 5)
-	    night["data"] = fullLineId
 	    allData_tmp.append([day, night])
 	except ValueError:
 	    print "No Data in line"
@@ -108,7 +108,7 @@ def writeInCSV(allData):
 
 def main():
     cityId = "227639/"
-    allYears = ["2015", "2016", "2017"]
+    allYears = ["2015"]
     allData = []
     for year in allYears:
         for mnthId in range(1,13):
