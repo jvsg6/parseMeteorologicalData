@@ -9,8 +9,6 @@ import time
 citeName = "https://www.gismeteo.ru/diary/"
 headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.0; WOW64; rv:24.0) Gecko/20100101 Firefox/24.0' }
 
-first = True
-
 
 def parseTemp(lineData, shift):
     return int(lineData[1+shift].getText())
@@ -79,30 +77,48 @@ def parseLine(lineData, shift):
     return {"temp": temp, "pressure": pr, "cloud": cloud, "weather": weather, "windSpeed": windSpeed, "windDir": windDir}
 
 def parseTable(pageData):
+    allData_tmp = []
     table = pageData.find("table")
     linesInTable = table.find_all('tr')
     linesInTable = linesInTable[2:]
-    for fullLine in linesInTable:
+    for fullLineId, fullLine in enumerate(linesInTable):
         try:
             day = parseLine(fullLine.find_all('td'), 0)
+	    day["data"] = fullLineId
             night = parseLine(fullLine.find_all('td'), 5)
+	    night["data"] = fullLineId
+	    allData_tmp.append([day, night])
 	except ValueError:
 	    print "No Data in line"
 	except AttributeError:
 	    print "No Data in line"
-    return
+    return allData_tmp
+
+def writeInCSV(allData):
+    f = open("meteoData.csv", "w")
+    f.write("day;temp;pressure;windDir(from);windSpeed;weather;cloud;temp;pressure;windDir(from);windSpeed;weather;cloud\n")
+    for fullDayData in allData:
+        day = fullDayData[0]
+	night = fullDayData[1]
+        f.write(str(fullDayData[0]["data"])+";")
+	f.write("{0};{1};{2};{3};{4};{5};".format(day["temp"],day["pressure"],day["windDir"],day["windSpeed"],day["weather"],day["cloud"]))
+	f.write("{0};{1};{2};{3};{4};{5}".format(night["temp"],night["pressure"],night["windDir"],night["windSpeed"],night["weather"],night["cloud"]))
+	f.write("\n")
+    f.close()
 
 def main():
     cityId = "227639/"
-    year = "2018"
-    
-    for mnthId in range(1,13):
-        linkToRegion = citeName+cityId+year+"/{0}/".format(mnthId)
-        print linkToRegion
-        s = requests.get(linkToRegion, headers=headers)
-        pageData=bs4.BeautifulSoup(s.text, "html.parser")
-	parseTable(pageData)
-
+    allYears = ["2015", "2016", "2017"]
+    allData = []
+    for year in allYears:
+        for mnthId in range(1,13):
+            linkToRegion = citeName+cityId+year+"/{0}/".format(mnthId)
+            print linkToRegion
+            s = requests.get(linkToRegion, headers=headers)
+            pageData=bs4.BeautifulSoup(s.text, "html.parser")
+	    allData.extend(parseTable(pageData))
+	
+    writeInCSV(allData)
 	
     print "Dine!"
     return
